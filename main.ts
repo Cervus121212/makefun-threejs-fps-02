@@ -8,7 +8,7 @@
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
 // Serve the game locally with `node serve.ts`, then open http://localhost:8080.
 
-import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDossier } from './vendor/makefun-threejs.ts';
@@ -18,11 +18,16 @@ const outputDir = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 
 // The scorer caps the whole of /output at 1,000 entries and 64 MiB, shared by
 // game/ (at most 993 entries, 48 MiB), screenshots/ (at most 4 files, 256 KiB
-// each) and dossier.json. Rebuilding from a clean directory keeps a stale file
-// from a previous run out of the submission, and keeps the two grader runs
-// byte-identical.
-rmSync(outputDir, { recursive: true, force: true });
+// each) and dossier.json. Clearing the output directory's contents keeps a
+// stale file from a previous run out of the submission, and keeps the two
+// grader runs byte-identical.
 mkdirSync(outputDir, { recursive: true });
+// Never remove the output directory itself: on the grader /output is a
+// mounted volume and removing the mount point throws EBUSY. Only its
+// contents are removed, entry by entry.
+for (const entry of readdirSync(outputDir)) {
+  rmSync(join(outputDir, entry), { recursive: true, force: true });
+}
 
 const gameSource = join(repoRoot, 'game');
 const shotsSource = join(repoRoot, 'screenshots');
